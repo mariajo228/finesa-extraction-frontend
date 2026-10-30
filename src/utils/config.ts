@@ -7,7 +7,7 @@ const toNumber = (value: string | undefined, fallback: number): number => {
 
 export const config = {
   /** "local" = lee el PDF en el navegador (cualquier otro valor), "real" = backend REST. */
-  apiMode: (import.meta.env.VITE_API_MODE === 'real' ? 'real' : 'local') as 'local' | 'real',
+  apiMode: (import.meta.env.VITE_API_MODE === 'local' ? 'local' : 'real') as 'local' | 'real',
   /** Vacío => rutas relativas ("/api/...") que usan el proxy de Vite en desarrollo. */
   apiBaseUrl: ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').replace(/\/+$/, ''),
   /** El enunciado pide polling cada 3 a 5 segundos. Se fuerza al rango [3000, 5000]. */
