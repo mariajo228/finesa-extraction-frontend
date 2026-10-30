@@ -23,7 +23,7 @@ export interface ExtractionApi {
  */
 export function buildFormData({ file, docType, docId }: ExtractionRequest): FormData {
   const form = new FormData();
-  form.append('file', file, file.name);
+  form.append('files', file, file.name);
   form.append('doc_type', docType);
   form.append('doc_id', docId.trim());
   return form;

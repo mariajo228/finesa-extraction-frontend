@@ -81,9 +81,14 @@ export function useExtraction() {
         try {
           result = await extractionApi.getResult(correlationId, signal);
           failures = 0;
-        } catch (err) {
-          failures += 1;
-          if (!isTransient(err) || failures >= MAX_POLL_FAILURES) throw err;
+            } catch (err) {
+          // El backend responde 404 mientras el resultado aún no existe: equivale a PENDING.
+          if (err instanceof ApiError && err.kind === 'http' && err.status === 404) {
+            failures = 0;
+          } else {
+            failures += 1;
+            if (!isTransient(err) || failures >= MAX_POLL_FAILURES) throw err;
+          }
         }
 
         if (result?.status === 'COMPLETED' && result.payload) {

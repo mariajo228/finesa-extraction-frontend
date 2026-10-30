@@ -35,38 +35,47 @@ const STATUS_MAP: Record<string, JobStatus> = {
   ERROR: 'FAILED',
 };
 
+/**
+ * Busca el contenido útil de la respuesta. El backend real entrega el detalle
+ * estructurado en "detalle"; si no existe, se usan las otras variantes conocidas.
+ */
+function pickPayload(raw: JsonObject): JsonObject | undefined {
+  const candidate: JsonValue | undefined =
+    raw.detalle ?? raw.payload ?? raw.data ?? raw.result ?? raw.extracted_data;
+  return isObject(candidate) ? candidate : undefined;
+}
+
 /** Normaliza la respuesta de GET /api/extraction/results/{correlationId}. */
 export function normalizeResult(raw: unknown): JobResult {
   if (!isObject(raw)) {
     throw new ApiError('Respuesta inesperada al consultar el estado.', 'parse');
   }
-  const rawStatus = String(raw.status ?? '').toUpperCase();
-  const status = STATUS_MAP[rawStatus];
-  if (!status) {
-    throw new ApiError(`Estado de procesamiento desconocido: "${raw.status}".`, 'parse');
-  }
-
-  if (status === 'COMPLETED') {
-    const payload = raw.payload ?? raw.data ?? raw.result ?? raw.extracted_data;
-    if (!isObject(payload)) {
-      throw new ApiError('El procesamiento terminó pero no incluye datos extraídos.', 'parse');
-    }
-    return { status, payload };
-  }
+  const status = STATUS_MAP[String(raw.status ?? '').toUpperCase()];
+  const payload = pickPayload(raw);
 
   if (status === 'FAILED') {
     const message = raw.error ?? raw.message ?? raw.detail;
     return { status, error: typeof message === 'string' ? message : undefined };
   }
 
-  return { status };
+  // El backend real responde 200 con un "status" numérico (p. ej. 101) cuando ya hay datos:
+  // si no es un estado conocido pero trae contenido extraído, se considera completado.
+  if (status === 'COMPLETED' || (!status && payload)) {
+    if (!payload) {
+      throw new ApiError('El procesamiento terminó pero no incluye datos extraídos.', 'parse');
+    }
+    return { status: 'COMPLETED', payload };
+  }
+
+  if (status === 'PENDING') return { status };
+
+  throw new ApiError(`Estado de procesamiento desconocido: "${raw.status}".`, 'parse');
 }
 
-/** La respuesta síncrona puede venir envuelta ({ data: {...} }) o directa ({...}). */
+/** La respuesta síncrona puede venir envuelta ({ detalle, data... }) o directa ({...}). */
 export function normalizeSyncPayload(raw: unknown): JsonObject {
   if (!isObject(raw)) {
     throw new ApiError('La respuesta síncrona no contiene un objeto JSON.', 'parse');
   }
-  const inner: JsonValue | undefined = raw.payload ?? raw.data ?? raw.result;
-  return isObject(inner) ? inner : raw;
+  return pickPayload(raw) ?? raw;
 }
