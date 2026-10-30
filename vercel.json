@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://finesa-front-demo-1063009710641.us-east4.run.app/api/:path*"
+    }
+  ]
+}
